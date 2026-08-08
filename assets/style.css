@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+body {
+    background-color: #070710;
+    font-family: 'Outfit', sans-serif;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* Glassmorphic card styling */
+.glass-card {
+    background: rgba(18, 18, 38, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    border-color: rgba(139, 92, 246, 0.25);
+    box-shadow: 0 12px 40px 0 rgba(139, 92, 246, 0.08);
+    transform: translateY(-2px);
+}
+
+/* Glow effects */
+.text-glow-purple {
+    text-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+}
+
+.text-glow-cyan {
+    text-shadow: 0 0 12px rgba(6, 182, 212, 0.5);
+}
+
+.text-glow-green {
+    text-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+.border-glow-purple {
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.15);
+}
+
+.border-glow-cyan {
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+}
+
+/* Tab button styling */
+.tab-button {
+    background: rgba(255, 255, 255, 0.02);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 9px 18px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-button:hover {
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.tab-button-active {
+    background: linear-gradient(135deg, #8b5cf6, #06b6d4) !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 700;
+    box-shadow: 0 4px 18px rgba(139, 92, 246, 0.35);
+}
+
+/* Sliders custom track */
+.rc-slider-track {
+    background-color: #8b5cf6 !important;
+}
+
+.rc-slider-handle {
+    border: solid 2px #06b6d4 !important;
+    background-color: #070710 !important;
+    box-shadow: 0 0 6px #06b6d4 !important;
+}
+
+/* DataTable override styles */
+.dash-spreadsheet-container .dash-spreadsheet {
+    border-radius: 12px !important;
+    overflow: hidden !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.35s ease-out forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #070710;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1a1a35;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #272750;
+}
+
+/* Custom buttons */
+.btn-primary {
+    background: linear-gradient(135deg, #8b5cf6, #06b6d4);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.25s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.2);
+}
