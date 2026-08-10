@@ -855,12 +855,24 @@ def draw_models(ok, sid):
                 {'label':'Random Forest',      'value':'rf'},
                 {'label':'Gradient Boosting',  'value':'gb'},
                 {'label':'Decision Tree',      'value':'dt'}]
-    reg_opts = [{'label':'Linear Regression',        'value':'linreg'},
+    reg_opts = [{'label':'Simple Linear Regression (one feature)', 'value':'slr'},
+                {'label':'Multiple Linear Regression (all features)', 'value':'mlr'},
                 {'label':'Ridge Regression',         'value':'ridge'},
                 {'label':'Random Forest Regressor',  'value':'rfr'},
                 {'label':'Gradient Boost Regressor', 'value':'gbr'}]
     m_opts   = clf_opts if task=='clf' else reg_opts
-    m_dflt   = ['rf','lr'] if task=='clf' else ['rfr','linreg']
+    m_dflt   = ['rf','lr'] if task=='clf' else ['rfr','mlr']
+    reg_feature_control = (
+        html.Div([
+            lbl('Feature for Simple Linear Regression'),
+            dcc.Dropdown(id='reg-feature',
+                         options=[{'label': f, 'value': f} for f in proc['feat']],
+                         value=proc['feat'][0] if proc['feat'] else None,
+                         clearable=False, style=DD_STYLE),
+        ]) if task == 'reg' else
+        dcc.Dropdown(id='reg-feature', options=[], value=None,
+                     style={'display': 'none'})
+    )
 
     return html.Div([
         html.Div([
@@ -869,6 +881,7 @@ def draw_models(ok, sid):
                 dcc.Checklist(id='mdl-sel', options=m_opts, value=m_dflt,
                               labelStyle={'color':C['text'],'display':'block',
                                           'marginBottom':'8px','fontSize':'13px'}),
+                reg_feature_control,
                 divr(),
                 html.Div('Hyperparameters', style={'color':C['a3'],'fontWeight':'700',
                                                     'fontSize':'11px','letterSpacing':'1px',
@@ -899,17 +912,19 @@ def draw_models(ok, sid):
     ])
 
 FRIENDLY = {'lr':'Logistic Reg.','rf':'Random Forest','gb':'Grad. Boost','dt':'Dec. Tree',
-            'linreg':'Linear Reg.','ridge':'Ridge','rfr':'RF Regressor','gbr':'GB Regressor'}
+            'slr':'Simple Linear Reg.','mlr':'Multiple Linear Reg.','ridge':'Ridge',
+            'rfr':'RF Regressor','gbr':'GB Regressor'}
 CLRS = [C['a1'],C['a2'],C['a3'],C['a4'],C['red']]
 
 @app.callback(
     [Output('train-out','children'), Output('train-ok','data')],
     Input('btn-train','n_clicks'),
     [State('mdl-sel','value'), State('hp-est','value'), State('hp-dep','value'),
-     State('hp-lr','value'), State('hp-c','value'), State('sid','data')],
+     State('hp-lr','value'), State('hp-c','value'), State('reg-feature','value'),
+     State('sid','data')],
     prevent_initial_call=True,
 )
-def train(n, keys, n_est, depth, lr, c_v, sid):
+def train(n, keys, n_est, depth, lr, c_v, simple_feature, sid):
     if not n or not sid: raise dash.exceptions.PreventUpdate
     proc = cache_load(sid,'proc')
     if not proc: return html.Div('Run preprocessing first!',style={'color':C['red']}), False
@@ -926,7 +941,8 @@ def train(n, keys, n_est, depth, lr, c_v, sid):
         'rf':    RandomForestClassifier(n_estimators=n_est,max_depth=depth,random_state=42,n_jobs=-1),
         'gb':    GradientBoostingClassifier(n_estimators=n_est,max_depth=depth,learning_rate=lr,random_state=42),
         'dt':    DecisionTreeClassifier(max_depth=depth,random_state=42),
-        'linreg':LinearRegression(),
+        'slr':   LinearRegression(),
+        'mlr':   LinearRegression(),
         'ridge': Ridge(alpha=1.0),
         'rfr':   RandomForestRegressor(n_estimators=n_est,max_depth=depth,random_state=42,n_jobs=-1),
         'gbr':   GradientBoostingRegressor(n_estimators=n_est,max_depth=depth,learning_rate=lr,random_state=42),
@@ -935,7 +951,18 @@ def train(n, keys, n_est, depth, lr, c_v, sid):
     res = {}
     for k in keys:
         if k not in clf_reg: continue
-        m = clf_reg[k]; m.fit(X_tr, y_tr); yp = m.predict(X_te)
+        m = clf_reg[k]
+        model_features = feat
+        if k == 'slr':
+            if simple_feature not in feat:
+                return html.Div('Select a feature for Simple Linear Regression.', style={'color':C['red']}), False
+            idx = feat.index(simple_feature)
+            X_train_model, X_test_model = X_tr[:, [idx]], X_te[:, [idx]]
+            m = LinearRegression()
+            model_features = [simple_feature]
+        else:
+            X_train_model, X_test_model = X_tr, X_te
+        m.fit(X_train_model, y_tr); yp = m.predict(X_test_model)
         if task=='clf':
             yprob = m.predict_proba(X_te)[:,1] if hasattr(m,'predict_proba') else None
             res[k] = {'model':m,'acc':accuracy_score(y_te,yp),
@@ -945,7 +972,7 @@ def train(n, keys, n_est, depth, lr, c_v, sid):
                       'cm':confusion_matrix(y_te,yp),'yprob':yprob,'yp':yp,
                       'report':classification_report(y_te,yp,output_dict=True,zero_division=0)}
         else:
-            res[k] = {'model':m,'r2':r2_score(y_te,yp),
+            res[k] = {'model':m,'model_features':model_features,'r2':r2_score(y_te,yp),
                       'mae':mean_absolute_error(y_te,yp),
                       'mse':mean_squared_error(y_te,yp),
                       'rmse':np.sqrt(mean_squared_error(y_te,yp)),'yp':yp}
@@ -1217,6 +1244,7 @@ def live_pred(n, vals, ids, mk, sid):
     le_map,scaler,task = proc['le_map'],proc['scaler'],proc['task']
     tgt_cls            = proc.get('tgt_cls',['0','1'])
     mdl                = models[mk]['model']
+    model_features     = models[mk].get('model_features', feat)
 
     cvm = {d['col']:v for d,v in zip(ids,vals)}
     row = {}
@@ -1240,8 +1268,10 @@ def live_pred(n, vals, ids, mk, sid):
     # output as an array instead of assigning it into integer DataFrame columns.
     X_inp = scaler.transform(inp.values) if scaler is not None else inp.values
 
-    pred  = mdl.predict(X_inp)[0]
-    proba = mdl.predict_proba(X_inp)[0] if hasattr(mdl,'predict_proba') else None
+    model_indexes = [feat.index(col) for col in model_features]
+    X_model = X_inp[:, model_indexes]
+    pred  = mdl.predict(X_model)[0]
+    proba = mdl.predict_proba(X_model)[0] if hasattr(mdl,'predict_proba') else None
 
     if task == 'clf':
         lbl_s = tgt_cls[int(pred)] if int(pred)<len(tgt_cls) else str(pred)
@@ -1308,6 +1338,7 @@ def batch_pred(n, contents, fname, mk, sid):
     le_map,scaler,task = proc['le_map'],proc['scaler'],proc['task']
     tgt_cls = proc.get('tgt_cls',['0','1'])
     mdl     = models[mk]['model']
+    model_features = models[mk].get('model_features', feat)
 
     bp = bdf.copy()
     for col in feat:
@@ -1326,11 +1357,13 @@ def batch_pred(n, contents, fname, mk, sid):
     if scaler is not None:
         Xb = scaler.transform(Xb)
 
-    preds = mdl.predict(Xb)
+    model_indexes = [feat.index(col) for col in model_features]
+    X_model = Xb[:, model_indexes]
+    preds = mdl.predict(X_model)
     if task=='clf':
         bdf['Predicted_Class'] = [tgt_cls[int(p)] if int(p)<len(tgt_cls) else str(p) for p in preds]
         if hasattr(mdl,'predict_proba'):
-            bdf['Confidence_%'] = (mdl.predict_proba(Xb).max(axis=1)*100).round(2)
+            bdf['Confidence_%'] = (mdl.predict_proba(X_model).max(axis=1)*100).round(2)
     else:
         bdf['Predicted_Value'] = preds.round(4)
 
